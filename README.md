@@ -1,3 +1,3 @@
-# Backend
+# Config Based Scraper
 
-This is my backend service code which I will be using for my projects.
+This is a config based scraper which will be using primarily chromedp for scraping, but will be supporting other libraries as well over time.
