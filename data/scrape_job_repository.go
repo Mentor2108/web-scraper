@@ -47,7 +47,7 @@ func (repo *ScrapeJobRepo) Create(ctx context.Context, job defn.ScrapeJob) (stri
 
 func (repo *ScrapeJobRepo) Update(ctx context.Context, id string, updates map[string]interface{}) (map[string]interface{}, *util.CustomError) {
 	if len(updates) == 0 {
-		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseCreateOperationFailed, defn.ErrDatabaseCreateOperationFailed, map[string]string{
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseUpdateOperationFailed, defn.ErrDatabaseUpdateOperationFailed, map[string]string{
 			"error": "no fields found for updating",
 		})
 		// log.Println(cerr)
@@ -62,7 +62,7 @@ func (repo *ScrapeJobRepo) Update(ctx context.Context, id string, updates map[st
 		if field == "response" {
 			jsobBytes, err := json.Marshal(value)
 			if err != nil {
-				cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseCreateOperationFailed, defn.ErrDatabaseCreateOperationFailed, map[string]string{
+				cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseUpdateOperationFailed, defn.ErrDatabaseUpdateOperationFailed, map[string]string{
 					"error": err.Error(),
 				})
 				// log.Println(cerr)
@@ -79,7 +79,7 @@ func (repo *ScrapeJobRepo) Update(ctx context.Context, id string, updates map[st
 
 	rows, err := repo.db.Pool.Query(ctx, query, args...)
 	if err != nil {
-		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseCreateOperationFailed, defn.ErrDatabaseCreateOperationFailed, map[string]string{
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseUpdateOperationFailed, defn.ErrDatabaseUpdateOperationFailed, map[string]string{
 			"error": err.Error(),
 		})
 		// log.Println(cerr)
@@ -96,7 +96,7 @@ func (repo *ScrapeJobRepo) Update(ctx context.Context, id string, updates map[st
 
 	// Read the first and only row
 	if !rows.Next() {
-		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseCreateOperationFailed, defn.ErrDatabaseCreateOperationFailed, map[string]string{
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseUpdateOperationFailed, defn.ErrDatabaseUpdateOperationFailed, map[string]string{
 			"error": "no rows found",
 		})
 		// log.Println(cerr)
@@ -105,7 +105,7 @@ func (repo *ScrapeJobRepo) Update(ctx context.Context, id string, updates map[st
 
 	values, err := rows.Values() // Get all values in a slice
 	if err != nil {
-		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseCreateOperationFailed, defn.ErrDatabaseCreateOperationFailed, map[string]string{
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseUpdateOperationFailed, defn.ErrDatabaseUpdateOperationFailed, map[string]string{
 			"error": err.Error(),
 		})
 		// log.Println(cerr)

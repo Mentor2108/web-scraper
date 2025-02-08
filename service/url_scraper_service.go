@@ -5,7 +5,6 @@ import (
 	"backend-service/defn"
 	"backend-service/util"
 	"context"
-	"log"
 )
 
 type UrlScraperService struct {
@@ -49,6 +48,8 @@ func (scraper *UrlScraperService) Init(ctx context.Context, config defn.ScrapeCo
 
 func (scraper *UrlScraperService) Start(ctx context.Context) (map[string]interface{}, *util.CustomError) {
 	//create scrape-job
+	log := util.GetGlobalLogger(ctx)
+
 	jobId, cerr := scraper.ScrapeJobRepo.Create(ctx, defn.ScrapeJob{
 		URL:      scraper.scrapeInfo["url"].(string),
 		Depth:    scraper.config.Depth,

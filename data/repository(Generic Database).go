@@ -4,10 +4,10 @@ import (
 	"backend-service/defn"
 	"backend-service/util"
 	"context"
-	"log"
 )
 
 func ActionByMap(ctx context.Context, action defn.DatabaseAction, data map[string]interface{}) (map[string]interface{}, *util.CustomError) {
+	log := util.GetGlobalLogger(ctx)
 	switch action {
 	case defn.DatabaseActionCreate:
 		return CreateEntityByMap(ctx, data)

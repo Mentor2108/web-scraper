@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -15,8 +17,7 @@ func ScrapeURL(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := r.Context()
 	log := util.GetGlobalLogger(ctx)
 
-	var scrapeRequest defn.ScrapeRequest
-	scrapeRequest.Config = &defn.ScrapeConfig{Depth: 5}
+	var scrapeRequest = defn.DefaultScrapeRequest()
 	if err := json.NewDecoder(r.Body).Decode(&scrapeRequest); err != nil {
 		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeFailedToParseRequestBody, defn.ErrFailedToParseRequestBody, map[string]string{
 			"error": err.Error(),
@@ -26,15 +27,25 @@ func ScrapeURL(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		return
 	}
 
-	// if val, ok := requestMap["config"]; !ok {
-	if scrapeRequest.Config == nil {
+	//Checking Mandatory Fields
+	if strings.EqualFold(scrapeRequest.Url, "") {
 		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeMissingRequiredField, defn.ErrMissingRequiredField, map[string]string{
-			"field": "config",
+			"field": "url",
 		})
 		log.Println(cerr)
 		util.RespondWithError(ctx, w, http.StatusBadRequest, cerr)
 		return
 	}
+
+	if scrapeRequest.Config.ScrapePhase == nil {
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeMissingRequiredField, defn.ErrMissingRequiredField, map[string]string{
+			"field": "config.scrape-phase",
+		})
+		log.Println(cerr)
+		util.RespondWithError(ctx, w, http.StatusBadRequest, cerr)
+		return
+	}
+	spew.Dump(scrapeRequest)
 
 	var urlScraper *service.UrlScraperService
 	scraperService, cerr := urlScraper.Init(ctx, *scrapeRequest.Config, map[string]interface{}{"url": scrapeRequest.Url})
@@ -55,7 +66,6 @@ func ScrapeURL(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// requestMap[""]
 
 	// log.Printf("Request map: %+v", scrapeRequest)
-	// spew.Dump(scrapeRequest)
 	// h.service.Create(ctx, requestMap)
 }
 

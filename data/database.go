@@ -29,7 +29,12 @@ func (db *Database) InitialiseDatabaseTables(ctx context.Context) error {
 	if err := db.createScrapeJobTable(ctx); err != nil {
 		return err
 	}
-	log.Println("Scrape-Job table successfully created")
+	log.Println("scrape_job table successfully created")
+
+	if err := db.createFileDataTable(ctx); err != nil {
+		return err
+	}
+	log.Println("file_data table successfully created")
 	return nil
 }
 
@@ -55,6 +60,22 @@ func (db *Database) createScrapeJobTable(ctx context.Context) error {
 		depth integer default 1 NOT NULL,
 		maxlimit integer default 1 NOT NULL,
 		response jsonb,
+		created_on timestamp default NOW()
+	);`
+	if _, err := db.Pool.Exec(ctx, createTableSQL); err != nil {
+		util.GetGlobalLogger(ctx).Println("Failed to execute create query", err)
+		return err
+	}
+	return nil
+}
+
+func (db *Database) createFileDataTable(ctx context.Context) error {
+	createTableSQL := `CREATE TABLE IF NOT EXISTS file_data(
+		id VARCHAR(26) PRIMARY KEY CONSTRAINT ulid_size	CHECK (char_length(id) = 26),
+		file_name VARCHAR(255) NOT NULL,
+		file_type VARCHAR(127) NOT NULL,
+		file_path VARCHAR(511) NOT NULL,
+		file_size numeric NOT NULL,
 		created_on timestamp default NOW()
 	);`
 	if _, err := db.Pool.Exec(ctx, createTableSQL); err != nil {
