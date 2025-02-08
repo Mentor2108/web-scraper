@@ -16,12 +16,16 @@ func (cerr *CustomError) Error() string {
 	return fmt.Sprintf("| code: %s | error: %s", cerr.Code, cerr.Message)
 }
 
-func (cerr *CustomError) GetErrorMap(ctx context.Context) []byte {
-	errorBytes, _ := json.Marshal(map[string]interface{}{
+func (cerr *CustomError) GetErrorBytes(ctx context.Context) []byte {
+	errorBytes, _ := json.Marshal(cerr.GetErrorMap(ctx))
+	return errorBytes
+}
+
+func (cerr *CustomError) GetErrorMap(ctx context.Context) map[string]interface{} {
+	return map[string]interface{}{
 		"code":  cerr.Code,
 		"error": cerr.Message,
-	})
-	return errorBytes
+	}
 }
 
 func NewCustomError(ctx context.Context, code string, err error) *CustomError {

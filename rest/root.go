@@ -21,6 +21,9 @@ func AddRoutes(router *httprouter.Router, userHandler *user.UserRoutesHandler) {
 
 	router.Handle(http.MethodGet, "/status", ServerStatus)
 
+	router.Handle(http.MethodPost, "/scraper/scrape/website/start", ScrapeURL)
+	router.Handle(http.MethodPost, "/scraper/scrape/pdf/start", ScrapePDF)
+
 	user.AddRoutes(router, userHandler)
 }
 

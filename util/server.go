@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"runtime/debug"
 	"time"
 )
 
@@ -79,8 +78,8 @@ func ShutdownHTTPServer() {
 	fmt.Println("Successfully stopped server")
 }
 
-func PanicHandler(w http.ResponseWriter, r *http.Request, err interface{}) {
-	w.WriteHeader(500)
-	GetGlobalLogger(r.Context()).Println("panic stack trace", string(debug.Stack()))
-	fmt.Fprintln(w, "500 - Internal error")
-}
+// func PanicHandler(w http.ResponseWriter, r *http.Request, err interface{}) {
+// w.WriteHeader(500)
+// GetGlobalLogger(r.Context()).Println("panic stack trace", string(debug.Stack()))
+// fmt.Fprintln(w, "500 - Internal error")
+// }

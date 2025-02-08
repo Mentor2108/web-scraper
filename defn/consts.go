@@ -13,3 +13,7 @@ const (
 	ContentTypePlainText  = "text/plain; charset=UTF-8"
 	HTTPHeaderContentType = "Content-Type"
 )
+
+const (
+	ScrapePhaseLibraryChromedp = "chromedp"
+)

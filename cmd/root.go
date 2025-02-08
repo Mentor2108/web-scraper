@@ -67,8 +67,6 @@ func StartServer(ctx context.Context, database data.Database) {
 	writeTimeout := defn.WriteTimeout
 	readHeaderTimeout := defn.ReadHeaderTimeout
 
-	router.PanicHandler = util.PanicHandler
-
 	userHandler := SetupRouters(database)
 	rest.AddRoutes(router, userHandler)
 	handler := rest.ApplyMiddleware(router)
