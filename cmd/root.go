@@ -8,8 +8,6 @@ import (
 	data "backend-service/data"
 	defn "backend-service/defn"
 	rest "backend-service/rest"
-	user "backend-service/rest/user"
-	"backend-service/service"
 	util "backend-service/util"
 
 	"github.com/julienschmidt/httprouter"
@@ -67,8 +65,7 @@ func StartServer(ctx context.Context, database data.Database) {
 	writeTimeout := defn.WriteTimeout
 	readHeaderTimeout := defn.ReadHeaderTimeout
 
-	userHandler := SetupRouters(database)
-	rest.AddRoutes(router, userHandler)
+	rest.AddRoutes(router)
 	handler := rest.ApplyMiddleware(router)
 	handler = cors.Default().Handler(handler)
 	// handler := router
@@ -88,10 +85,6 @@ func StartServer(ctx context.Context, database data.Database) {
 func ShutdownServer(ctx context.Context) {
 	util.ShutdownHTTPServer()
 	fmt.Println("shutdown complete.")
-}
-
-func SetupRouters(database data.Database) *user.UserRoutesHandler {
-	return user.NewUserRoutesHandler(service.NewUserService(data.NewUserRepository(database)))
 }
 
 func Execute() {

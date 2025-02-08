@@ -2,7 +2,6 @@ package rest
 
 import (
 	"backend-service/defn"
-	"backend-service/rest/user"
 	"backend-service/util"
 	"context"
 	"net/http"
@@ -11,7 +10,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-func AddRoutes(router *httprouter.Router, userHandler *user.UserRoutesHandler) {
+func AddRoutes(router *httprouter.Router) {
 	log := util.GetGlobalLogger(context.Background())
 
 	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -23,8 +22,6 @@ func AddRoutes(router *httprouter.Router, userHandler *user.UserRoutesHandler) {
 
 	router.Handle(http.MethodPost, "/scraper/scrape/website/start", ScrapeURL)
 	router.Handle(http.MethodPost, "/scraper/scrape/pdf/start", ScrapePDF)
-
-	user.AddRoutes(router, userHandler)
 }
 
 func ServerStatus(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
