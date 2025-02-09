@@ -25,9 +25,22 @@ type ProcessPhaseDefn struct {
 }
 
 type ScrapeDataDefn struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Selector string `json:"selector"`
+	Name        string           `json:"name"`
+	Type        string           `json:"type"`
+	Selector    string           `json:"selector"`
+	SectionType *SectionTypeDefn `json:"section"`
+	TableType   *TableTypeDefn   `json:"table"`
+}
+
+// WIP
+type SectionTypeDefn struct {
+	Heading []string `json:"heading"`
+	Data    []string `json:"data"`
+}
+
+// WIP
+type TableTypeDefn struct {
+	Title string `json:"title"`
 }
 
 type WaitForDefn struct {

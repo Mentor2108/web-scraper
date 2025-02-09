@@ -18,4 +18,6 @@ const (
 
 const (
 	ScrapePhaseLibraryChromedp = "chromedp"
+
+	ProcessPhaseLibraryGoquery = "goquery"
 )

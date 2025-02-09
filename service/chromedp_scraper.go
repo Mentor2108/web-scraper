@@ -65,7 +65,7 @@ func (scraper *ChromedpScraperService) Init(ctx context.Context, config defn.Scr
 
 func (scraper *ChromedpScraperService) Start(ctx context.Context) (map[string]interface{}, *util.CustomError) {
 	log := util.GetGlobalLogger(ctx)
-	resp, cerr := scraper.start(ctx)
+	rawHTML, plainText, resp, cerr := scraper.start(ctx)
 	if cerr != nil {
 		//write error to database
 		errorResponse, databaseErr := scraper.ScrapeTaskRepo.Update(ctx, scraper.scrapeInfo["task-id"].(string), map[string]interface{}{
@@ -95,7 +95,7 @@ func (scraper *ChromedpScraperService) Status(ctx context.Context) (map[string]i
 	return nil, nil
 }
 
-func (scraper *ChromedpScraperService) start(ctx context.Context) (map[string]interface{}, *util.CustomError) {
+func (scraper *ChromedpScraperService) start(ctx context.Context) (string, string, map[string]interface{}, *util.CustomError) {
 	log := util.GetGlobalLogger(ctx)
 
 	//saved it in the map, can assert its there
@@ -125,7 +125,7 @@ func (scraper *ChromedpScraperService) start(ctx context.Context) (map[string]in
 			"error": err.Error(),
 		})
 		log.Println(cerr)
-		return nil, cerr
+		return "", "", nil, cerr
 	}
 
 	// change job-id to task-id later
@@ -154,7 +154,7 @@ func (scraper *ChromedpScraperService) start(ctx context.Context) (map[string]in
 	}
 	if cerr != nil {
 		log.Println(cerr)
-		return uploadedFilesResponse, cerr
+		return rawHTML, plainText, uploadedFilesResponse, cerr
 	}
 
 	updateResponse, cerr := scraper.ScrapeTaskRepo.Update(ctx, scraper.scrapeInfo["task-id"].(string), map[string]interface{}{
@@ -164,7 +164,7 @@ func (scraper *ChromedpScraperService) start(ctx context.Context) (map[string]in
 		},
 	})
 	if cerr != nil {
-		return uploadedFilesResponse, cerr
+		return rawHTML, plainText, uploadedFilesResponse, cerr
 	}
 
 	_, cerr = scraper.ScrapeJobRepo.Update(ctx, scraper.scrapeInfo["job-id"].(string), map[string]interface{}{
@@ -174,9 +174,9 @@ func (scraper *ChromedpScraperService) start(ctx context.Context) (map[string]in
 		},
 	})
 	if cerr != nil {
-		return uploadedFilesResponse, cerr
+		return rawHTML, plainText, uploadedFilesResponse, cerr
 	}
 
 	log.Println("sucess scraping response:", updateResponse)
-	return uploadedFilesResponse, nil
+	return rawHTML, plainText, uploadedFilesResponse, nil
 }

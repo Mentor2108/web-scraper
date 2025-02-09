@@ -38,6 +38,11 @@ func (scraper *UrlScraperService) Init(ctx context.Context, config defn.ScrapeCo
 		return nil, cerr
 	}
 
+	switch config.ProcessPhase.Library {
+	case defn.ProcessPhaseLibraryGoquery:
+		var GoqueryProcessor
+	}
+
 	return &UrlScraperService{
 		scraper:        specialisedScraper,
 		config:         config,
