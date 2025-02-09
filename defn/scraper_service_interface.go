@@ -11,5 +11,5 @@ type ScraperService interface {
 	Pause(ctx context.Context) *util.CustomError
 	Stop(ctx context.Context) *util.CustomError
 	Status(ctx context.Context) (map[string]interface{}, *util.CustomError)
-	SyncStart(ctx context.Context) *util.CustomError
+	SyncStart(ctx context.Context) (map[string]interface{}, *util.CustomError)
 }

@@ -5,6 +5,7 @@ import (
 	"backend-service/defn"
 	"backend-service/util"
 	"context"
+	"log"
 
 	"github.com/chromedp/chromedp"
 )
@@ -15,7 +16,7 @@ type ChromedpScraperService struct {
 	chromedpContext    context.Context
 	chromedpCancelFunc context.CancelFunc
 	ScrapeJobRepo      *data.ScrapeJobRepo
-	// ScrapeTaskRepo data.ScrapeTaskRepo
+	ScrapeTaskRepo     *data.ScrapeTaskRepo
 }
 
 // func NewChromedpScraperService(repo defn.Repository) *ScraperService {
@@ -26,21 +27,48 @@ func (scraper *ChromedpScraperService) Init(ctx context.Context, config defn.Scr
 	// log := util.GetGlobalLogger(ctx)
 	newCtx, cancelFunc := chromedp.NewContext(context.Background())
 
-	return &ChromedpScraperService{
+	specalisedScraper := &ChromedpScraperService{
 		config:             config,
 		scrapeInfo:         scrapeInfo,
 		chromedpContext:    newCtx,
 		chromedpCancelFunc: cancelFunc,
 		ScrapeJobRepo:      data.NewScrapeJobRepo(),
-	}, nil
+		ScrapeTaskRepo:     data.NewScrapeTaskRepo(),
+	}
+
+	jobId, cerr := specalisedScraper.ScrapeJobRepo.Create(ctx, defn.ScrapeJob{
+		Depth:    specalisedScraper.config.Depth,
+		Maxlimit: specalisedScraper.config.MaxLimit,
+	})
+	if cerr != nil {
+		log.Println(cerr)
+		return nil, cerr
+	}
+	specalisedScraper.scrapeInfo["job-id"] = jobId
+
+	log.Println("jobid:", jobId)
+	taskId, cerr := specalisedScraper.ScrapeTaskRepo.Create(ctx, defn.ScrapeTask{
+		URL:      specalisedScraper.scrapeInfo["url"].(string),
+		JobId:    jobId,
+		Depth:    specalisedScraper.config.Depth,
+		Maxlimit: specalisedScraper.config.MaxLimit,
+		Level:    1,
+	})
+	if cerr != nil {
+		log.Println(cerr)
+		return nil, cerr
+	}
+	specalisedScraper.scrapeInfo["task-id"] = taskId
+
+	return specalisedScraper, nil
 }
 
-func (scraper *ChromedpScraperService) Start(ctx context.Context) *util.CustomError {
+func (scraper *ChromedpScraperService) Start(ctx context.Context) (map[string]interface{}, *util.CustomError) {
 	log := util.GetGlobalLogger(ctx)
-	cerr := scraper.start(ctx)
+	resp, cerr := scraper.start(ctx)
 	if cerr != nil {
 		//write error to database
-		errorResponse, databaseErr := scraper.ScrapeJobRepo.Update(ctx, scraper.scrapeInfo["job-id"].(string), map[string]interface{}{
+		errorResponse, databaseErr := scraper.ScrapeTaskRepo.Update(ctx, scraper.scrapeInfo["task-id"].(string), map[string]interface{}{
 			"response": map[string]interface{}{
 				"status": "scraping failed",
 				"error":  cerr.GetErrorMap(ctx),
@@ -48,11 +76,11 @@ func (scraper *ChromedpScraperService) Start(ctx context.Context) *util.CustomEr
 		})
 		if databaseErr != nil {
 			log.Println(databaseErr)
-			return databaseErr
+			return resp, databaseErr
 		}
 		log.Println("error response:", errorResponse)
 	}
-	return cerr
+	return resp, cerr
 }
 
 func (scraper *ChromedpScraperService) Pause(ctx context.Context) *util.CustomError {
@@ -67,7 +95,7 @@ func (scraper *ChromedpScraperService) Status(ctx context.Context) (map[string]i
 	return nil, nil
 }
 
-func (scraper *ChromedpScraperService) start(ctx context.Context) *util.CustomError {
+func (scraper *ChromedpScraperService) start(ctx context.Context) (map[string]interface{}, *util.CustomError) {
 	log := util.GetGlobalLogger(ctx)
 
 	//saved it in the map, can assert its there
@@ -97,7 +125,7 @@ func (scraper *ChromedpScraperService) start(ctx context.Context) *util.CustomEr
 			"error": err.Error(),
 		})
 		log.Println(cerr)
-		return cerr
+		return nil, cerr
 	}
 
 	// change job-id to task-id later
@@ -105,7 +133,7 @@ func (scraper *ChromedpScraperService) start(ctx context.Context) *util.CustomEr
 		Name: "scraped_data",
 		Folders: []*defn.FileFolderStructure{
 			{
-				Name: scraper.scrapeInfo["job-id"].(string),
+				Name: scraper.scrapeInfo["task-id"].(string),
 				Files: []*defn.FileStructure{
 					{
 						FileName:    "raw_html",
@@ -121,22 +149,34 @@ func (scraper *ChromedpScraperService) start(ctx context.Context) *util.CustomEr
 			},
 		},
 	})
+	uploadedFilesResponse := map[string]interface{}{
+		"uploaded_files": savedFiles,
+	}
 	if cerr != nil {
 		log.Println(cerr)
-		return cerr
+		return uploadedFilesResponse, cerr
 	}
 
-	updateResponse, cerr := scraper.ScrapeJobRepo.Update(ctx, scraper.scrapeInfo["job-id"].(string), map[string]interface{}{
+	updateResponse, cerr := scraper.ScrapeTaskRepo.Update(ctx, scraper.scrapeInfo["task-id"].(string), map[string]interface{}{
 		"response": map[string]interface{}{
 			"status":         "successfully scraped provided url",
 			"uploaded_files": savedFiles,
 		},
 	})
 	if cerr != nil {
-		return cerr
+		return uploadedFilesResponse, cerr
 	}
+
+	_, cerr = scraper.ScrapeJobRepo.Update(ctx, scraper.scrapeInfo["job-id"].(string), map[string]interface{}{
+		"response": map[string]interface{}{
+			"status":         "successfully scraped provided url",
+			"uploaded_files": savedFiles,
+		},
+	})
+	if cerr != nil {
+		return uploadedFilesResponse, cerr
+	}
+
 	log.Println("sucess scraping response:", updateResponse)
-	//save raw html somewhere
-	// log.Println("plain text:", plainText)
-	return nil
+	return uploadedFilesResponse, nil
 }

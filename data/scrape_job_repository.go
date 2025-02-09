@@ -33,8 +33,8 @@ func (repo *ScrapeJobRepo) Create(ctx context.Context, job defn.ScrapeJob) (stri
 		}
 	}
 
-	_, err = repo.db.Pool.Exec(ctx, "INSERT INTO scrape_job (id, url, depth, maxlimit, response) VALUES ($1, $2, $3, $4, $5)",
-		job.ID, job.URL, job.Depth, job.Maxlimit, responseBytes)
+	_, err = repo.db.Pool.Exec(ctx, "INSERT INTO scrape_job (id, depth, maxlimit, response) VALUES ($1, $2, $3, $4)",
+		job.ID, job.Depth, job.Maxlimit, responseBytes)
 	if err != nil {
 		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseCreateOperationFailed, defn.ErrDatabaseCreateOperationFailed, map[string]string{
 			"error": err.Error(),
@@ -121,8 +121,151 @@ func (repo *ScrapeJobRepo) Update(ctx context.Context, id string, updates map[st
 	return updatedData, nil
 }
 
-func (repo *ScrapeJobRepo) Get(ctx context.Context, id string) (*defn.ScrapeJob, *util.CustomError) {
-	return nil, nil
+// func (repo *ScrapeJobRepo) Get(ctx context.Context, id string) (*defn.ScrapeJob, *util.CustomError) {
+
+// 	return nil, nil
+// }
+
+func (repo *ScrapeJobRepo) GetJobWithTasks(ctx context.Context, pagesize int) (map[string]interface{}, *util.CustomError) {
+	query := `
+	SELECT 
+		j.*, 
+		COALESCE(jsonb_agg(t.*) FILTER (WHERE t.id IS NOT NULL), '[]') AS scrape_task
+	FROM scrape_job j
+	LEFT JOIN scrape_task t ON j.id = t.job_id
+	GROUP BY j.id
+	LIMIT $1;
+	`
+
+	rows, err := repo.db.Pool.Query(ctx, query, pagesize)
+	if err != nil {
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+			"error": err.Error(),
+		})
+		// log.Println(cerr)
+		return nil, cerr
+	}
+	defer rows.Close()
+
+	// Fetch column names dynamically
+	fieldDescriptions := rows.FieldDescriptions()
+	columns := make([]string, len(fieldDescriptions))
+	for i, fd := range fieldDescriptions {
+		columns[i] = fd.Name
+	}
+
+	resp := []map[string]interface{}{}
+	for rows.Next() {
+		values, err := rows.Values() // Get all values in a slice
+		if err != nil {
+			cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+				"error": err.Error(),
+			})
+			// log.Println(cerr)
+			return nil, cerr
+		}
+
+		// Store values dynamically in map
+		jobRowResponse := make(map[string]interface{})
+		for i, column := range columns {
+			jobRowResponse[column] = values[i]
+		}
+
+		// Convert `tasks` column to `[]map[string]interface{}`
+		if tasksJSON, ok := jobRowResponse["tasks"].([]byte); ok {
+			var tasks []map[string]interface{}
+			if err := json.Unmarshal(tasksJSON, &tasks); err != nil {
+				cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+					"error": err.Error(),
+				})
+				// log.Println(cerr)
+				return nil, cerr
+			}
+			jobRowResponse["tasks"] = tasks
+		}
+		resp = append(resp, jobRowResponse)
+	}
+
+	// Read the first row
+	// if !rows.Next() {
+	// 	cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+	// 		"error": "no job found with given id",
+	// 	})
+	// 	// log.Println(cerr)
+	// 	return nil, cerr
+	// }
+
+	return map[string]interface{}{
+		"scrape_job": resp,
+	}, nil
+}
+
+func (repo *ScrapeJobRepo) GetJobWithTasksByID(ctx context.Context, jobID string) (map[string]interface{}, *util.CustomError) {
+	query := `
+	SELECT 
+		j.*, 
+		COALESCE(jsonb_agg(t.*) FILTER (WHERE t.id IS NOT NULL), '[]') AS scrape_task
+	FROM scrape_job j
+	LEFT JOIN scrape_task t ON j.id = t.job_id
+	WHERE j.id = $1
+	GROUP BY j.id;
+	`
+
+	rows, err := repo.db.Pool.Query(ctx, query, jobID)
+	if err != nil {
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+			"error": err.Error(),
+		})
+		// log.Println(cerr)
+		return nil, cerr
+	}
+	defer rows.Close()
+
+	// Fetch column names dynamically
+	fieldDescriptions := rows.FieldDescriptions()
+	columns := make([]string, len(fieldDescriptions))
+	for i, fd := range fieldDescriptions {
+		columns[i] = fd.Name
+	}
+
+	// Read the first row
+	if !rows.Next() {
+		return map[string]interface{}{
+			"scrape_job": nil,
+		}, nil
+	}
+
+	values, err := rows.Values() // Get all values in a slice
+	if err != nil {
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+			"error": err.Error(),
+		})
+		// log.Println(cerr)
+		return nil, cerr
+	}
+
+	// Store values dynamically in map
+	jobResponse := make(map[string]interface{})
+	for i, column := range columns {
+		jobResponse[column] = values[i]
+	}
+
+	// Convert `tasks` column to `[]map[string]interface{}`
+	if tasksJSON, ok := jobResponse["tasks"].([]byte); ok {
+		var tasks []map[string]interface{}
+		if err := json.Unmarshal(tasksJSON, &tasks); err != nil {
+			cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+				"error": err.Error(),
+			})
+			// log.Println(cerr)
+			return nil, cerr
+		}
+		jobResponse["tasks"] = tasks
+	}
+
+	return map[string]interface{}{
+		"scrape_job": jobResponse,
+	}, nil
 }
 
 // func (repo *ScrapeJobRepo) Delete(ctx context.Context, job defn.ScrapeJob) (defn.ScrapeJob, *util.CustomError) {

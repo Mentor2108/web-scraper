@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -45,7 +44,7 @@ func ScrapeURL(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		util.RespondWithError(ctx, w, http.StatusBadRequest, cerr)
 		return
 	}
-	spew.Dump(scrapeRequest)
+	// spew.Dump(scrapeRequest)
 
 	var urlScraper *service.UrlScraperService
 	scraperService, cerr := urlScraper.Init(ctx, *scrapeRequest.Config, map[string]interface{}{"url": scrapeRequest.Url})
@@ -63,10 +62,6 @@ func ScrapeURL(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		util.SendResponseMapWithStatus(ctx, w, http.StatusCreated, resp)
 		return
 	}
-	// requestMap[""]
-
-	// log.Printf("Request map: %+v", scrapeRequest)
-	// h.service.Create(ctx, requestMap)
 }
 
 func ScrapePDF(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {

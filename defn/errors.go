@@ -15,6 +15,7 @@ const (
 	ErrCodeDirectoryCreationFailed        = "create-directory-failed"
 	ErrCodeFileWriteFailed                = "file-write-failed"
 	ErrCodeFileStatFailed                 = "file-stat-failed"
+	ErrCodeParseToIntFailed               = "parse-int-failed"
 )
 
 var (
@@ -30,4 +31,5 @@ var (
 	ErrDirectoryCreationFailed        = errors.New("failed to create directory with path '{path}': {error}")
 	ErrFileWriteFailed                = errors.New("failed to write to file with path '{path}': {error}")
 	ErrFileStatFailed                 = errors.New("failed to get file stat with path '{path}': {error}")
+	ErrParseToIntFailed               = errors.New("failed to parse the field '{field}' to int: {error}")
 )

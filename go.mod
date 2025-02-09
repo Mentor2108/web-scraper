@@ -5,6 +5,8 @@ go 1.23
 toolchain go1.23.5
 
 require (
+	github.com/chromedp/chromedp v0.12.1
+	github.com/davecgh/go-spew v1.1.1
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/oklog/ulid v1.3.1
@@ -14,9 +16,7 @@ require (
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20250203011601-a3c71a042730 // indirect
-	github.com/chromedp/chromedp v0.12.1 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect

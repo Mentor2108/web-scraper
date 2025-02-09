@@ -20,8 +20,10 @@ func AddRoutes(router *httprouter.Router) {
 
 	router.Handle(http.MethodGet, "/status", ServerStatus)
 
-	router.POST("/scraper/scrape/website/start", ScrapeURL)
+	router.POST("/scraper/scrape/url/start", ScrapeURL)
 	router.POST("/scraper/scrape/pdf/start", ScrapePDF)
+
+	router.GET("/scraper/list/scrapeddata/url", GetScrapedDataForJobs)
 
 	router.GET("/content/file/id/:id", GetFileById)
 }
