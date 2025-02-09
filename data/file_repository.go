@@ -29,6 +29,46 @@ func (repo *FileRepo) Create(ctx context.Context, fileInfo defn.FileInfo) (strin
 	return fileInfo.ID, nil
 }
 
-func (repo *FileRepo) GetFileById(ctx context.Context, id string) (map[string]interface{}, *util.CustomError) {
-	return nil, nil
+func (repo *FileRepo) GetFileById(ctx context.Context, fileId string) (map[string]interface{}, *util.CustomError) {
+	rows, err := repo.db.Pool.Query(ctx, "SELECT * from file_data where id = $1", fileId)
+	if err != nil {
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+			"error": err.Error(),
+		})
+		// log.Println(cerr)
+		return nil, cerr
+	}
+	defer rows.Close()
+
+	// Fetch column names dynamically
+	fieldDescriptions := rows.FieldDescriptions()
+	columns := make([]string, len(fieldDescriptions))
+	for i, fd := range fieldDescriptions {
+		columns[i] = fd.Name
+	}
+
+	// Read the first row
+	if !rows.Next() {
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+			"error": "no file found with id " + fileId,
+		})
+		// log.Println(cerr)
+		return nil, cerr
+	}
+
+	values, err := rows.Values() // Get all values in a slice
+	if err != nil {
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseGetOperationFailed, defn.ErrDatabaseGetOperationFailed, map[string]string{
+			"error": err.Error(),
+		})
+		// log.Println(cerr)
+		return nil, cerr
+	}
+
+	// Store values dynamically in map
+	fileResponse := make(map[string]interface{})
+	for i, column := range columns {
+		fileResponse[column] = values[i]
+	}
+	return fileResponse, nil
 }

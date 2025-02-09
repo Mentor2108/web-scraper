@@ -9,9 +9,11 @@ const (
 )
 
 const (
-	ContentTypeJSON       = "application/json"
-	ContentTypePlainText  = "text/plain; charset=UTF-8"
-	HTTPHeaderContentType = "Content-Type"
+	ContentTypeJSON        = "application/json"
+	ContentTypePlainText   = "text/plain; charset=UTF-8"
+	ContentTypeHTMLText    = "text/html; charset=utf-8"
+	ContentTypeOctetStream = "application/octet-stream"
+	HTTPHeaderContentType  = "Content-Type"
 )
 
 const (

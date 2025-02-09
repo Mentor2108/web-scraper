@@ -6,6 +6,7 @@ import (
 	"backend-service/util"
 	"context"
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,6 +100,27 @@ func SaveFile(ctx context.Context, folderPath string, file *defn.FileStructure) 
 	}
 }
 
-func GetFile(ctx context.Context) {
+func GetFile(ctx context.Context, fileId string) ([]byte, *defn.FileInfo, *util.CustomError) {
+	fileMap, cerr := data.NewFileRepo().GetFileById(ctx, fileId)
+	if cerr != nil {
+		log.Println(cerr)
+		return nil, nil, cerr
+	}
 
+	fileInfo := &defn.FileInfo{
+		FileName: fileMap["file_name"].(string),
+		FilePath: fileMap["file_path"].(string),
+		FileType: fileMap["file_type"].(string),
+	}
+
+	fileContent, err := os.ReadFile(fileInfo.FilePath)
+	if err != nil {
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeFileReadFailed, defn.ErrFileReadFailed, map[string]string{
+			"error": err.Error(),
+			"path":  fileInfo.FilePath,
+		})
+		log.Println(cerr)
+		return nil, nil, cerr
+	}
+	return fileContent, fileInfo, nil
 }
