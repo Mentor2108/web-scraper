@@ -47,7 +47,7 @@ func ScrapeURL(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// spew.Dump(scrapeRequest)
 
 	var urlScraper *service.UrlScraperService
-	scraperService, cerr := urlScraper.Init(ctx, *scrapeRequest.Config, map[string]interface{}{"url": scrapeRequest.Url})
+	scraperService, cerr := urlScraper.Init(ctx, *scrapeRequest.Config, map[string]interface{}{"url": scrapeRequest.Url, "level": 0})
 	if cerr != nil {
 		log.Println(cerr)
 		util.RespondWithError(ctx, w, http.StatusBadRequest, cerr)

@@ -29,6 +29,23 @@ func (repo *FileRepo) Create(ctx context.Context, fileInfo defn.FileInfo) (strin
 	return fileInfo.ID, nil
 }
 
+func (repo *FileRepo) UpdateFileSizeByFilePath(ctx context.Context, fileInfo defn.FileInfo) (string, *util.CustomError) {
+	var fileId string
+
+	row := repo.db.Pool.QueryRow(ctx, "UPDATE file_data SET file_size = $2 WHERE file_path = $1 RETURNING id", fileInfo.FilePath, fileInfo.FileSize)
+
+	err := row.Scan(&fileId)
+	if err != nil {
+		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeDatabaseUpdateOperationFailed, defn.ErrDatabaseUpdateOperationFailed, map[string]string{
+			"error": err.Error(),
+		})
+		// log.Println(cerr)
+		return "", cerr
+	}
+
+	return fileId, nil
+}
+
 func (repo *FileRepo) GetFileById(ctx context.Context, fileId string) (map[string]interface{}, *util.CustomError) {
 	rows, err := repo.db.Pool.Query(ctx, "SELECT * from file_data where id = $1", fileId)
 	if err != nil {

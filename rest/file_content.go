@@ -35,6 +35,8 @@ func GetFileById(w http.ResponseWriter, r *http.Request, param httprouter.Params
 		contentType = defn.ContentTypeHTMLText
 	case ".txt":
 		contentType = defn.ContentTypePlainText
+	case ".md":
+		contentType = defn.ContentTypeMarkdownText
 	default:
 		contentType = defn.ContentTypeOctetStream
 	}
