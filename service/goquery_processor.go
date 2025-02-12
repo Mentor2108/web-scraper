@@ -101,11 +101,17 @@ func (processor *GoqueryProcessURL) process(ctx context.Context, rawHTML string)
 		},
 	})
 
-	if cerr != nil && !processor.config.ContinueOnError {
+	if cerr != nil {
 		return processedStr, nil, cerr
-	} else if cerr == nil {
-		processor.fileIDs = append(processor.fileIDs, filesMap...)
 	}
+
+	processor.fileIDs = append(processor.fileIDs, filesMap...)
+
+	// if cerr != nil && !processor.config.ContinueOnError {
+	// 	return processedStr, nil, cerr
+	// } else if cerr == nil {
+	// 	processor.fileIDs = append(processor.fileIDs, filesMap...)
+	// }
 
 	// log.Println("my depth, limit and visitedlinks are", processor.config.Depth, processor.config.MaxLimit, processor.visitedLinks)
 	returnedConfig, cerr = processor.nestedScrape(ctx, linksFound)
