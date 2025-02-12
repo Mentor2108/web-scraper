@@ -151,7 +151,7 @@ func (scraper *UrlScraperService) SyncStart(ctx context.Context) (map[string]int
 				return returnedConfig, databaseErr
 			}
 			log.Println("error response:", errorResponse)
-			return returnedConfig, cerr
+			return scraper.scrapeInfo, cerr
 		}
 	}
 
@@ -162,8 +162,8 @@ func (scraper *UrlScraperService) SyncStart(ctx context.Context) (map[string]int
 		},
 	})
 	if databaseErr != nil {
-		return returnedConfig, databaseErr
+		return scraper.scrapeInfo, databaseErr
 	}
 
-	return returnedConfig, nil
+	return scraper.scrapeInfo, nil
 }
