@@ -6,7 +6,6 @@ import (
 	"backend-service/util"
 	"context"
 	"errors"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,8 +17,8 @@ func ParseFolderStructureAndSaveFile(ctx context.Context, folderPath string, fil
 	}
 
 	log := util.GetGlobalLogger(ctx)
-
 	savedFilesMap := []map[string]interface{}{}
+	var uploadedImages []map[string]interface{}
 
 	if strings.EqualFold(fileFolderMap.Name, "") {
 		cerr := util.NewCustomError(ctx, "no-folder-name-provided", errors.New("no folder name was provided"))
@@ -29,11 +28,20 @@ func ParseFolderStructureAndSaveFile(ctx context.Context, folderPath string, fil
 
 	for _, folder := range fileFolderMap.Folders {
 		savedFiles, cerr := ParseFolderStructureAndSaveFile(ctx, filepath.Join(folderPath, fileFolderMap.Name), folder)
-		if savedFiles != nil {
-			savedFilesMap = append(savedFilesMap, savedFiles...)
-		}
-		if cerr != nil {
-			return savedFilesMap, cerr
+		if strings.EqualFold(folder.Name, "images") {
+			if savedFiles != nil {
+				uploadedImages = savedFiles
+			}
+			if cerr != nil {
+				return append(savedFilesMap, map[string]interface{}{"uploaded_images": uploadedImages}), cerr
+			}
+		} else {
+			if savedFiles != nil {
+				savedFilesMap = append(savedFilesMap, savedFiles...)
+			}
+			if cerr != nil {
+				return savedFilesMap, cerr
+			}
 		}
 	}
 
@@ -43,6 +51,9 @@ func ParseFolderStructureAndSaveFile(ctx context.Context, folderPath string, fil
 			return savedFilesMap, cerr
 		}
 
+		if uploadedImages != nil {
+			savedFile["uploaded_images"] = uploadedImages
+		}
 		savedFilesMap = append(savedFilesMap, savedFile)
 	}
 
@@ -62,6 +73,11 @@ func SaveFile(ctx context.Context, folderPath string, file *defn.FileStructure) 
 	}
 
 	filePath := filepath.Join(folderPath, file.FileName+file.FileType)
+	fileExists := false
+	if _, err := os.Stat(filePath); !errors.Is(err, os.ErrNotExist) {
+		fileExists = true
+	}
+
 	if err := os.WriteFile(filePath, file.FileContent, os.ModePerm); err != nil {
 		cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeFileWriteFailed, defn.ErrFileWriteFailed, map[string]string{
 			"error": err.Error(),
@@ -89,18 +105,32 @@ func SaveFile(ctx context.Context, folderPath string, file *defn.FileStructure) 
 	}
 
 	fileRepo := data.NewFileRepo()
-	if fileId, cerr := fileRepo.Create(ctx, fileMetaData); cerr != nil {
-		log.Println(cerr)
-		return nil, cerr
+	if !fileExists {
+		if fileId, cerr := fileRepo.Create(ctx, fileMetaData); cerr != nil {
+			log.Println(cerr)
+			return nil, cerr
+		} else {
+			return map[string]interface{}{
+				"id":   fileId,
+				"name": file.FileName + file.FileType,
+			}, nil
+		}
 	} else {
-		return map[string]interface{}{
-			"id":   fileId,
-			"name": file.FileName + file.FileType,
-		}, nil
+		if fileId, cerr := fileRepo.UpdateFileSizeByFilePath(ctx, fileMetaData); cerr != nil {
+			log.Println(cerr)
+			return nil, cerr
+		} else {
+			return map[string]interface{}{
+				"id":   fileId,
+				"name": file.FileName + file.FileType,
+			}, nil
+		}
 	}
 }
 
 func GetFile(ctx context.Context, fileId string) ([]byte, *defn.FileInfo, *util.CustomError) {
+	log := util.GetGlobalLogger(ctx)
+
 	fileMap, cerr := data.NewFileRepo().GetFileById(ctx, fileId)
 	if cerr != nil {
 		log.Println(cerr)

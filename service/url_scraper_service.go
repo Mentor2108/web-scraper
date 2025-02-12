@@ -5,10 +5,14 @@ import (
 	"backend-service/defn"
 	"backend-service/util"
 	"context"
+	"errors"
+	"runtime/debug"
+	"strings"
 )
 
 type UrlScraperService struct {
-	scraper        defn.SpecialisedScraperService
+	scrapePhase    defn.ScrapePhaseService
+	processPhase   defn.ProcessPhaseService
 	config         defn.ScrapeConfig
 	scrapeInfo     map[string]interface{}
 	ScrapeJobRepo  *data.ScrapeJobRepo
@@ -22,12 +26,19 @@ type UrlScraperService struct {
 func (scraper *UrlScraperService) Init(ctx context.Context, config defn.ScrapeConfig, scrapeInfo map[string]interface{}) (defn.ScraperService, *util.CustomError) {
 	log := util.GetGlobalLogger(ctx)
 	var cerr *util.CustomError
-	var specialisedScraper defn.SpecialisedScraperService
+	var scrapePhaseScraper defn.ScrapePhaseService
+	var processPhaseProcessor defn.ProcessPhaseService
+
+	if strings.EqualFold(config.Root, "") {
+		cerr := util.NewCustomError(ctx, "empty-root-selector", errors.New("provided root selector is empty"))
+		log.Println(cerr)
+		return nil, cerr
+	}
 
 	switch config.ScrapePhase.Library {
 	case defn.ScrapePhaseLibraryChromedp:
 		var ChromedpScraper *ChromedpScraperService
-		if specialisedScraper, cerr = ChromedpScraper.Init(ctx, config, scrapeInfo); cerr != nil {
+		if scrapePhaseScraper, cerr = ChromedpScraper.Init(ctx, config, scrapeInfo); cerr != nil {
 			return nil, cerr
 		}
 	default:
@@ -38,8 +49,25 @@ func (scraper *UrlScraperService) Init(ctx context.Context, config defn.ScrapeCo
 		return nil, cerr
 	}
 
+	if config.ProcessPhase != nil {
+		switch config.ProcessPhase.Library {
+		case defn.ProcessPhaseLibraryGoquery:
+			var GoqueryProcessor *GoqueryProcessURL
+			if processPhaseProcessor, cerr = GoqueryProcessor.Init(ctx, config, scrapeInfo); cerr != nil {
+				return nil, cerr
+			}
+		default:
+			cerr := util.NewCustomErrorWithKeys(ctx, defn.ErrCodeProcessPhaseLibraryNotSupported, defn.ErrProcessPhaseLibraryNotSupported, map[string]string{
+				"library": config.ProcessPhase.Library,
+			})
+			log.Println(cerr)
+			return nil, cerr
+		}
+	}
+
 	return &UrlScraperService{
-		scraper:        specialisedScraper,
+		scrapePhase:    scrapePhaseScraper,
+		processPhase:   processPhaseProcessor,
 		config:         config,
 		scrapeInfo:     scrapeInfo,
 		ScrapeJobRepo:  data.NewScrapeJobRepo(),
@@ -52,6 +80,12 @@ func (scraper *UrlScraperService) Start(ctx context.Context) (map[string]interfa
 	go func() {
 		//Currently not storing any extra info in the context so creating a new context is fine
 		//Otherwise would have to copy the needed keys from request context to the new one
+		defer func() {
+			log := util.GetGlobalLogger(context.Background())
+			if panicVal := recover(); panicVal != nil {
+				log.Printf("Recovered in middleware:\n%+v\n%s\n", panicVal, string(debug.Stack()))
+			}
+		}()
 		scraper.SyncStart(context.Background())
 	}()
 
@@ -77,35 +111,59 @@ func (scraper *UrlScraperService) Status(ctx context.Context) (map[string]interf
 }
 
 func (scraper *UrlScraperService) SyncStart(ctx context.Context) (map[string]interface{}, *util.CustomError) {
-	//create scrape-job
-	// log := util.GetGlobalLogger(ctx)
+	log := util.GetGlobalLogger(ctx)
 
-	// jobId, cerr := scraper.ScrapeJobRepo.Create(ctx, defn.ScrapeJob{
-	// 	URL:      scraper.scrapeInfo["url"].(string),
-	// 	Depth:    scraper.config.Depth,
-	// 	Maxlimit: scraper.config.MaxLimit,
-	// })
-	// if cerr != nil {
-	// 	log.Println(cerr)
-	// 	return nil, cerr
-	// }
+	rawHtml, resp, cerr := scraper.scrapePhase.Start(context.Background())
+	if cerr != nil {
+		// if !scraper.config.ContinueOnError || strings.EqualFold(rawHtml, "") {
+		//write error to database for scrape job
+		errorResponse, databaseErr := scraper.ScrapeJobRepo.Update(ctx, scraper.scrapeInfo["job-id"].(string), map[string]interface{}{
+			"response": map[string]interface{}{
+				"status":         "scraping failed at task: " + scraper.scrapeInfo["task-id"].(string),
+				"error":          cerr.GetErrorMap(ctx),
+				"uploaded_files": scraper.scrapeInfo["all_uploaded_files"],
+			},
+		})
+		if databaseErr != nil {
+			log.Println(databaseErr)
+			return resp, databaseErr
+		}
+		log.Println("error response:", errorResponse)
+		return resp, cerr
+		// }
+	}
 
-	// taskId, cerr := scraper.ScrapeTaskRepo.Create(ctx, defn.ScrapeTask{
-	// 	URL:      scraper.scrapeInfo["url"].(string),
-	// 	JobId:    jobId,
-	// 	Depth:    scraper.config.Depth,
-	// 	Maxlimit: scraper.config.MaxLimit,
-	// 	Level:    1,
-	// })
-	// if cerr != nil {
-	// 	log.Println(cerr)
-	// 	return nil, cerr
-	// }
+	var returnedConfig map[string]interface{} = resp
+	if scraper.config.ProcessPhase != nil {
+		_, returnedConfig, cerr = scraper.processPhase.Process(ctx, rawHtml)
+		// scraper.scrapeInfo["uploaded_files"] = append((scraper.scrapeInfo["uploaded_files"].([]map[string]interface{})), (returnedConfig["uploaded_files"].([]map[string]interface{}))...)
 
-	//create scrape-link-obj
+		if cerr != nil {
+			errorResponse, databaseErr := scraper.ScrapeJobRepo.Update(ctx, scraper.scrapeInfo["job-id"].(string), map[string]interface{}{
+				"response": map[string]interface{}{
+					"status":         "scraping failed at task: " + scraper.scrapeInfo["task-id"].(string),
+					"error":          cerr.GetErrorMap(ctx),
+					"uploaded_files": scraper.scrapeInfo["all_uploaded_files"],
+				},
+			})
+			if databaseErr != nil {
+				log.Println(databaseErr)
+				return returnedConfig, databaseErr
+			}
+			log.Println("error response:", errorResponse)
+			return returnedConfig, cerr
+		}
+	}
 
-	// scraper.scrapeInfo["job-id"] = jobId
-	// scraper.scrapeInfo["task-id"] = taskId
+	_, databaseErr := scraper.ScrapeJobRepo.Update(ctx, scraper.scrapeInfo["job-id"].(string), map[string]interface{}{
+		"response": map[string]interface{}{
+			"status":         "successfully scraped provided url",
+			"uploaded_files": scraper.scrapeInfo["all_uploaded_files"],
+		},
+	})
+	if databaseErr != nil {
+		return returnedConfig, databaseErr
+	}
 
-	return scraper.scraper.Start(context.Background())
+	return returnedConfig, nil
 }

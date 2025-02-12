@@ -204,7 +204,7 @@ func (repo *ScrapeJobRepo) GetJobWithTasksByID(ctx context.Context, jobID string
 	query := `
 	SELECT 
 		j.*, 
-		COALESCE(jsonb_agg(t.*) FILTER (WHERE t.id IS NOT NULL), '[]') AS scrape_task
+		COALESCE(jsonb_agg(t.* ORDER BY t.created_on) FILTER (WHERE t.id IS NOT NULL), '[]') AS scrape_task
 	FROM scrape_job j
 	LEFT JOIN scrape_task t ON j.id = t.job_id
 	WHERE j.id = $1
