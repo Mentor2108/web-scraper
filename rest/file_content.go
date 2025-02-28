@@ -37,6 +37,23 @@ func GetFileById(w http.ResponseWriter, r *http.Request, param httprouter.Params
 		contentType = defn.ContentTypePlainText
 	case ".md":
 		contentType = defn.ContentTypeMarkdownText
+	case ".svg":
+		contentType = defn.ContentTypeSVG
+	case ".pdf":
+		contentType = defn.ContentTypePDF
+	case ".gif":
+		contentType = defn.ContentTypeGIF
+	case ".webp":
+		contentType = defn.ContentTypeWebP
+	case ".avif":
+		contentType = defn.ContentTypeAVIF
+	case ".jpg", ".jpeg", ".jfif", ".pjpeg", ".pjp":
+		contentType = defn.ContentTypeJPEG
+	case ".apng":
+		contentType = defn.ContentTypeAPNG
+	case ".png":
+		contentType = defn.ContentTypePNG
+
 	default:
 		contentType = defn.ContentTypeOctetStream
 	}

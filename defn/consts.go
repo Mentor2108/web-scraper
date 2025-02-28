@@ -16,6 +16,14 @@ const (
 	ContentTypeHTMLText     = "text/html; charset=utf-8"
 	ContentTypeMarkdownText = "text/markdown"
 	ContentTypeOctetStream  = "application/octet-stream"
+	ContentTypeAPNG         = "image/apng"
+	ContentTypeAVIF         = "image/avif"
+	ContentTypeGIF          = "image/gif"
+	ContentTypeJPEG         = "image/jpeg"
+	ContentTypeSVG          = "image/svg+xml"
+	ContentTypePNG          = "image/png"
+	ContentTypeWebP         = "image/webp"
+	ContentTypePDF          = "application/pdf"
 	HTTPHeaderContentType   = "Content-Type"
 )
 
